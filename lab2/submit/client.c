@@ -20,8 +20,15 @@ struct sockaddr_in serv_addr;
 struct hostent *server;
 int portno, isRandom = 0;
 float duration, think_time;
+struct timespec start, finish;
+
+unsigned long *requestsServed;
+double *responseTimes;
 
 void *_main(void* arg){
+	struct timespec now, sendTime, receiveTime;
+	double elapsed, respTime;
+	int i = *((int*) arg);
 	while(1){
 		int n, sockfd;
 		
@@ -43,6 +50,7 @@ void *_main(void* arg){
 			sprintf(buffer, "get files/foo0.txt");
 		}
 
+		clock_gettime(CLOCK_MONOTONIC, &sendTime);
 		/* send user message to server */
 		n = write(sockfd, buffer, strlen(buffer));
 		if (n < 0)
@@ -60,6 +68,10 @@ void *_main(void* arg){
 		if (bytesRead < 0)
 			error("ERROR reading from socket");
 		
+		clock_gettime(CLOCK_MONOTONIC, &receiveTime);
+		respTime = (receiveTime.tv_sec - sendTime.tv_sec);
+		respTime += (receiveTime.tv_nsec - sendTime.tv_nsec) / 1000000000.0;
+
 		if(totalBytes > 0 && totalBytes < PACKETSIZE)
 			printf("%s\n", recvbuffer);
 		else if(totalBytes > 0)
@@ -70,7 +82,16 @@ void *_main(void* arg){
 		
 		close(sockfd);
 		free(buffer);
-		break;
+		requestsServed[i]++;
+		responseTimes[i] += respTime;
+		
+		clock_gettime(CLOCK_MONOTONIC, &now);
+		elapsed = (now.tv_sec - start.tv_sec);
+		elapsed += (now.tv_nsec - start.tv_nsec) / 1000000000.0;
+
+		if(elapsed > duration)
+			break;
+
 		usleep(think_time);
 	}
 }
@@ -112,11 +133,33 @@ int main(int argc, char *argv[]){
 	serv_addr.sin_port = htons(portno);
 
 	srand(time(NULL));
-	
+	clock_gettime(CLOCK_MONOTONIC, &start);
+
+	requestsServed = (unsigned long*) calloc(NUM_THREADS, sizeof(unsigned long));
+	responseTimes = (double*) calloc(NUM_THREADS, sizeof(double)); 
+
 	// create the necessary threads
 	pthread_t threads[NUM_THREADS];
 	for(int i=0;i<NUM_THREADS;++i){
-		pthread_create(&threads[i], NULL, _main, NULL);	
+		pthread_create(&threads[i], NULL, _main, &i);	
 		pthread_join(threads[i], NULL);
 	}
+
+	clock_gettime(CLOCK_MONOTONIC, &finish);
+
+	// calculate throughput
+	double totalSuccessfulRequests = 0.0;
+	double totalTime = 0.0;
+	for(int i=0;i<NUM_THREADS;++i){
+		totalSuccessfulRequests += requestsServed[i];
+		totalTime += responseTimes[i];
+	}
+
+	double t = (finish.tv_sec - start.tv_sec);
+	t += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
+	
+	printf("Done!\n");
+	printf("throughput = %f req/s\n", totalSuccessfulRequests/(NUM_THREADS*t));
+	printf("average response time = %f sec\n", totalTime/totalSuccessfulRequests);
+
 }
