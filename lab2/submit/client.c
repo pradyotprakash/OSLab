@@ -72,13 +72,13 @@ void *_main(void* arg){
 		respTime = (receiveTime.tv_sec - sendTime.tv_sec);
 		respTime += (receiveTime.tv_nsec - sendTime.tv_nsec) / 1000000000.0;
 
-		if(totalBytes > 0 && totalBytes < PACKETSIZE)
-			printf("%s\n", recvbuffer);
-		else if(totalBytes > 0)
-			printf("File Successfully received\n");
-		else if(totalBytes == 0){
-			printf("0 bytes received\n");
-		}
+		// if(totalBytes > 0 && totalBytes < PACKETSIZE)
+		// 	printf("%s\n", recvbuffer);
+		// else if(totalBytes > 0)
+		// 	printf("File Successfully received\n");
+		// else if(totalBytes == 0){
+		// 	printf("0 bytes received\n");
+		// }
 		
 		close(sockfd);
 		free(buffer);
