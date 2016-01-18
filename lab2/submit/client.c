@@ -36,7 +36,7 @@ void *_main(void* arg){
 		sockfd = socket(AF_INET, SOCK_STREAM, 0);
 		if (sockfd < 0)
 			error("ERROR opening socket");
-			
+
 		/* connect to server */
 		if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
 			error("ERROR connecting");
@@ -140,8 +140,17 @@ int main(int argc, char *argv[]){
 
 	// create the necessary threads
 	pthread_t threads[NUM_THREADS];
-	for(int i=0;i<NUM_THREADS;++i){
-		pthread_create(&threads[i], NULL, _main, &i);	
+	int i;
+	for(i=0;i<NUM_THREADS;++i){
+		int iret = pthread_create(&threads[i], NULL, _main, &i);	
+		
+		if(iret){
+			fprintf(stderr, "Error - pthread_create() return code: %d\n", iret);
+			exit(2);
+		}
+	}
+
+	for(i=0;i<NUM_THREADS;++i){
 		pthread_join(threads[i], NULL);
 	}
 
@@ -150,7 +159,8 @@ int main(int argc, char *argv[]){
 	// calculate throughput
 	double totalSuccessfulRequests = 0.0;
 	double totalTime = 0.0;
-	for(int i=0;i<NUM_THREADS;++i){
+	
+	for(i=0;i<NUM_THREADS;++i){
 		totalSuccessfulRequests += requestsServed[i];
 		totalTime += responseTimes[i];
 	}
@@ -159,7 +169,7 @@ int main(int argc, char *argv[]){
 	t += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
 	
 	printf("Done!\n");
-	printf("throughput = %f req/s\n", totalSuccessfulRequests/(NUM_THREADS*t));
+	printf("throughput = %f req/s\n", totalSuccessfulRequests/(t));
 	printf("average response time = %f sec\n", totalTime/totalSuccessfulRequests);
 
 }
