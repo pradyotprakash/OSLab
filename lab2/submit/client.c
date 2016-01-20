@@ -80,7 +80,7 @@ void *_main(void* arg){
 		// 	printf("0 bytes received\n");
 		// }
 		
-		close(sockfd);
+		printf("SOCKET CLOSED: %d\n", close(sockfd));
 		free(buffer);
 		requestsServed[i]++;
 		responseTimes[i] += respTime;
