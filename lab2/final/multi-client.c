@@ -43,14 +43,16 @@ void *_main(void* arg){
 
 		char *buffer = (char *) malloc(30);
 		if(isRandom){
-			int r = rand()%10;
+			int r = rand()%10000;
 			sprintf(buffer, "get files/foo%d.txt", r);
 		}
 		else{
 			sprintf(buffer, "get files/foo0.txt");
 		}
 
+		// record the time before the request is sent
 		clock_gettime(CLOCK_MONOTONIC, &sendTime);
+		
 		/* send user message to server */
 		n = write(sockfd, buffer, strlen(buffer));
 		if (n < 0)
@@ -68,7 +70,10 @@ void *_main(void* arg){
 		if (bytesRead < 0)
 			error("ERROR reading from socket");
 		
+		// record the time when file is received
 		clock_gettime(CLOCK_MONOTONIC, &receiveTime);
+		
+		//calculate the total response time
 		respTime = (receiveTime.tv_sec - sendTime.tv_sec);
 		respTime += (receiveTime.tv_nsec - sendTime.tv_nsec) / 1000000000.0;
 
@@ -80,11 +85,12 @@ void *_main(void* arg){
 		// 	printf("0 bytes received\n");
 		// }
 		
-		printf("SOCKET CLOSED: %d\n", close(sockfd));
+		close(sockfd);
 		free(buffer);
 		requestsServed[i]++;
 		responseTimes[i] += respTime;
 		
+		// needed for checking when to stop the loop
 		clock_gettime(CLOCK_MONOTONIC, &now);
 		elapsed = (now.tv_sec - start.tv_sec);
 		elapsed += (now.tv_nsec - start.tv_nsec) / 1000000000.0;
@@ -92,13 +98,13 @@ void *_main(void* arg){
 		if(elapsed > duration)
 			break;
 
-		usleep(think_time);
+		usleep(think_time);	// wait for the specified amount of time
 	}
 }
 
 int main(int argc, char *argv[]){
 	
-	int NUM_THREADS = 1;
+	int NUM_THREADS = 1;	// some default assignment
 
 	if (argc < 7) {
 		fprintf(stderr, "usage %s hostname port #users duration_of_expt. think_time mode\n", argv[0]);
@@ -132,7 +138,10 @@ int main(int argc, char *argv[]){
 	bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
 	serv_addr.sin_port = htons(portno);
 
+	// do this for the random mode of operation
 	srand(time(NULL));
+	
+	// record the initial time when starting the experiments
 	clock_gettime(CLOCK_MONOTONIC, &start);
 
 	requestsServed = (unsigned long*) calloc(NUM_THREADS, sizeof(unsigned long));
@@ -142,6 +151,7 @@ int main(int argc, char *argv[]){
 	pthread_t threads[NUM_THREADS];
 	int i;
 	for(i=0;i<NUM_THREADS;++i){
+		// create a thread
 		int iret = pthread_create(&threads[i], NULL, _main, &i);	
 		
 		if(iret){
@@ -150,6 +160,7 @@ int main(int argc, char *argv[]){
 		}
 	}
 
+	// make the parent wait for them to exit
 	for(i=0;i<NUM_THREADS;++i){
 		pthread_join(threads[i], NULL);
 	}

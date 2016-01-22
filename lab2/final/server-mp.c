@@ -100,16 +100,24 @@ int main(int argc, char *argv[]){
 				}
 				fclose(fp);
 				
-				printf("File sent succesfully\n");
+				// printf("File sent succesfully: %s\n", filepath);
 
 				return 0;
 
 			}
+			// experiment code
+			// else if(buffer[0] == 'f' && buffer[1] == 'l' && buffer[2] == 'u' &&
+			// 			buffer[3] == 's' && buffer[4] == 'h'){
+			// 		system("sync; echo 3> /proc/sys/vm/drop_caches;");
+			// 		printf("Cache cleared!\n");
+
+			// 		return 0;
+			// }
 			else{
 				printf("Invalid Command received\n");
 				
 				/* send reply to client */
-				n = write(newsockfd,"Invalid Command",15);
+				n = write(newsockfd,"Invalid Command", 15);
 				if (n < 0) error("ERROR writing to socket");
 			}
 			close(newsockfd);
