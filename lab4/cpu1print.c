@@ -13,6 +13,7 @@ int main(int argc, char *argv[])
 	  j = j*i;
 	}
       printf("ten factorial is %u\n", j);
+      sleep(1);
     }
 }
 

@@ -1,0 +1,13 @@
+1. 	Process ID of bash was found to be 4090 (Found using ps command).
+	Branch of the process tree which leads to the bash shell is as shown: 
+		init───lightdm───lightdm───init───gnome-terminal───bash
+	The above was found using 'pstree -H <pid_of_bash>'
+
+2.	'cd' and 'history' are implemented in the bash shell code, and the other's are 
+	exec'd. This was found using the 'help', which lists the commands implemented in bash.
+
+3.	File descriptors 0 and 2 are pointing to /dev/pts/2 which correspond to 
+	standard input and standard error output, both being the terminal. File descriptor 1 points to /tmp/tmp.txt . Thus, IO redirection in bash is implemented by making standard file descriptors point to locations where the IO needs to redirected to/from. 'readlink' command can be used to find where the file descriptors point to.
+
+4.	The file descriptors(1 for cpu1print and 0 grep) point to the same pipe 
+	(determined by pipe id from readlink output). Thus, pipe is implemented in bash by pointing to std out file desc(1) of the left side process of the pipe to a pipe buffer and the std in file desc(2) of the right side of the pipe to the same pipe buffer.     
