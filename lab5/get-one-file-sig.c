@@ -11,7 +11,7 @@
 int totalBytes; 
 void signal_callback_handler(int signum){
     // do something
-    printf("\n\nReceived SIGINT; downloaded %d bytes so far.\n", totalBytes);
+    printf("Received SIGINT; downloaded %d bytes so far.\n", totalBytes);
     exit(0);
 }
 
