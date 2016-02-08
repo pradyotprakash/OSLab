@@ -76,8 +76,34 @@ void main(void){
 		tokens = ret.t;
 		l = ret.l;
 
-		//do whatever you want with the commands, here we just print them
-		if(strcmp(tokens[0], "cd") == 0){
+		char temp[64];
+		sprintf(temp, "/bin/%s", tokens[0]);
+		//check if that command is a std bash executable
+		if(access(temp, F_OK) != -1){
+			pid_t pid = fork();
+			if(pid == 0){
+				char* argv[64];
+				int i;
+				for( i=0; i < l; i++ ){
+					argv[i] = tokens[i];
+					// printf("%s\n", argv[i]);
+				}
+				argv[i] = (char*)NULL;
+				int retCode = execvp(temp, argv);
+				
+				if(retCode == -1){
+					fprintf(stderr, "Error while running %s! Error code: %d\n", tokens[0], errno);
+				}
+
+				exit(0);
+			}
+			else{
+				// signal(SIGINT, signal_callback_handler_parent);
+				setpgid(pid, pid);
+				wait();
+			}
+		}
+		else if(strcmp(tokens[0], "cd") == 0){
 
 			if(l != 2){
 				fprintf(stderr, "Usage cd: cd <path>\n");
@@ -86,7 +112,7 @@ void main(void){
 
 			int ret = chdir(tokens[1]);
 			
-			if (ENOENT == ret){
+			if (ENOTDIR == ret){
 				fprintf(stderr, "cd %s: Path does not exist!\n", tokens[1]);
 			}
 			else if(ret == 0){
@@ -226,6 +252,25 @@ void main(void){
 						wait();
 					}
 				}
+			}
+		}
+		else if(strcmp(tokens[0], "ls") == 0){
+			if(l > 1){
+				fprintf(stderr, "Usage ls: ls\n");
+			}
+			pid_t pid = fork();
+			if(pid == 0){	
+				int retCode = execlp("/bin/ls", "/bin/ls", (char*) NULL);
+				
+				if(retCode == -1){
+					fprintf(stderr, "Error while running ls! Error code: %d\n", errno);
+				}
+
+				exit(0);
+			}
+			else{
+				// signal(SIGINT, signal_callback_handler_parent);
+				wait();
 			}
 		}
 		else{
