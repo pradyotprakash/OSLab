@@ -66,9 +66,12 @@ void main(void){
 	char* server_ip = NULL;
 	char* server_port = NULL;
 
+	pid_t bpgid = -1;
+
 	while (1) {
-		
-		printf("Hello>");
+		char path[1000];
+		getcwd(path, 1000);
+		printf("Hello::%s>", path);
 		bzero(line, MAX_INPUT_SIZE);
 		gets(line);
 		line[strlen(line)] = '\n'; //terminate with new line
@@ -76,8 +79,12 @@ void main(void){
 		tokens = ret.t;
 		l = ret.l;
 
+		if(l == 0)
+			continue;
+
 		char temp[64];
 		sprintf(temp, "/bin/%s", tokens[0]);
+		
 		//check if that command is a std bash executable
 		if(access(temp, F_OK) != -1){
 			pid_t pid = fork();
@@ -97,11 +104,10 @@ void main(void){
 
 				exit(0);
 			}
-			else{
-				// signal(SIGINT, signal_callback_handler_parent);
-				setpgid(pid, pid);
-				wait();
-			}
+			// signal(SIGINT, signal_callback_handler_parent);
+			setpgid(pid, pid);
+			wait();
+			
 		}
 		else if(strcmp(tokens[0], "cd") == 0){
 
@@ -116,7 +122,6 @@ void main(void){
 				fprintf(stderr, "cd %s: Path does not exist!\n", tokens[1]);
 			}
 			else if(ret == 0){
-				printf("Path successfully changed!\n");
 			}
 			else{
 				fprintf(stderr, "cd %s: Some error occurred!\n", tokens[1]);	
@@ -162,15 +167,14 @@ void main(void){
 					int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[1], server_ip, server_port, "display", NULL);
 					
 					if(retCode == -1){
-						fprintf(stderr, "Error while running getfl! Error code: %d\n", errno);
+						fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
 					}
 
 					exit(0);
 				}
-				else{
-					// signal(SIGINT, signal_callback_handler_parent);
-					wait();
-				}
+				setpgid(pid, pid);
+				// signal(SIGINT, signal_callback_handler_parent);
+				wait();
 			}
 
 			else if(l == 4 && strcmp(tokens[2], ">") == 0){
@@ -189,16 +193,15 @@ void main(void){
 					int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[1], server_ip, server_port, "display", NULL);
 					
 					if(retCode == -1){
-						fprintf(stderr, "Error while running getfl! Error code: %d\n", errno);
+						fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
 					}
 
 					close(fd);
 
 					exit(0);
 				}
-				else{
-					wait();
-				}
+				setpgid(pid, pid);
+				wait();
 			}
 			else if(l >= 4 && strcmp(tokens[2], "|") == 0){
 								
@@ -209,15 +212,59 @@ void main(void){
 					perror("pipe");
 					continue;
 				}
+				pid_t pid, pid1;
 
-				pid_t pid = fork();
+				if((pid=fork()) == 0){
+					// left side child process
+					close(1);
+					dup(pipefd[1]);
+					close(pipefd[0]);
+					close(pipefd[1]);
+					char arg[1000];
+					sprintf(arg, "%s %s %s display", tokens[1], server_ip, server_port);
+					
+					int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[1], server_ip, server_port, "display", NULL);
+					
+					if(retCode == -1){
+						fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
+					}
 
-				if(pid == 0){
-
+					exit(0);
 				}
-				else{
-					wait();
+				pid1 = pid;
+				setpgid(pid, pid); //NOTE: setting the pgid of both children to the same group
+
+				if((pid=fork()) == 0){
+					close(0);
+					dup(pipefd[0]);
+					close(pipefd[0]);
+					close(pipefd[1]);
+					char temp1[64];
+					sprintf(temp1, "/bin/%s", tokens[3]);
+					if(access(temp, F_OK) != -1){
+						char* argv[64];
+						int i;
+						for( i=0; i < l; i++ ){
+							argv[i] = tokens[i+3];
+							// printf("%s\n", argv[i]);
+						}
+						argv[i] = (char*)NULL;
+						int retCode = execvp(temp, argv);
+						
+						if(retCode == -1){
+							fprintf(stderr, "Error while running %s! Error : %s\n", tokens[0], strerror(errno));
+						}
+
+						exit(0);
+					}
 				}	
+				setpgid(pid, pid1);
+
+				close(pipefd[0]);
+				close(pipefd[1]);
+				wait();
+				wait();
+
 			}
 			else{
 				fprintf(stderr, "Usage getfl: getfl <filename>\n");
@@ -244,34 +291,77 @@ void main(void){
 						int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[i], server_ip, server_port, "nodisplay", NULL);
 						
 						if(retCode == -1){
-							fprintf(stderr, "Error while running getfl! Error code: %d\n", errno);
+							fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
 						}
 						exit(0);
 					}
-					else{
-						wait();
-					}
+					setpgid(pid, pid);
+					wait();
 				}
 			}
 		}
-		else if(strcmp(tokens[0], "ls") == 0){
-			if(l > 1){
-				fprintf(stderr, "Usage ls: ls\n");
-			}
-			pid_t pid = fork();
-			if(pid == 0){	
-				int retCode = execlp("/bin/ls", "/bin/ls", (char*) NULL);
-				
-				if(retCode == -1){
-					fprintf(stderr, "Error while running ls! Error code: %d\n", errno);
-				}
-
-				exit(0);
+		else if(strcmp(tokens[0], "getpl") == 0){
+			if(l < 2){
+				fprintf(stderr, "Usage getpl: getpl <filename_1> .. <filename_n>\n");
+				continue;
 			}
 			else{
-				// signal(SIGINT, signal_callback_handler_parent);
+				pid_t p_top;
+				if((p_top=fork())==0){
+					pid_t pgid = -1;
+					for(i=1;i<l;++i){
+						pid_t pid = fork(); 
+						if(pid == 0){
+										
+							char arg[1000];
+							sprintf(arg, "%s %s %s display", tokens[i], server_ip, server_port);
+							
+							int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[i], server_ip, server_port, "nodisplay", NULL);
+							
+							if(retCode == -1){
+								fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
+							}
+							exit(0);
+						}
+						if(pgid==-1)
+							pgid = pid;
+						setpgid(pid, pgid);
+					}
+					while(waitpid(-1, NULL, WNOHANG) > 0);
+				}
+				setpgid(p_top, p_top);
 				wait();
 			}
+		}
+		else if(strcmp(tokens[0], "getbg") == 0){
+			if(l != 2){
+				fprintf(stderr, "Usage getbg: getbg <filename> \n");
+				continue;
+			}
+			else{
+				pid_t pid = fork();
+				
+				if(pid == 0){	
+					char arg[1000];
+					sprintf(arg, "%s %s %s display", tokens[i], server_ip, server_port);
+					
+					int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[i], server_ip, server_port, "nodisplay", NULL);
+					
+					if(retCode == -1){
+						fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
+					}
+					exit(0);
+				}
+				setpgid(pid, pid); //TODO: see if this is to be done
+			}
+		}
+		else if(strcmp(tokens[0], "exit") == 0){
+			if(l!=1){
+				fprintf(stderr, "Usage exit: exit \n");
+				continue;	
+			}
+			//kill all background processes
+			exit(0);
 		}
 		else{
 			printf("FOund some!\n");
