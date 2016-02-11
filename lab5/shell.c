@@ -11,19 +11,35 @@
 #define MAX_TOKEN_SIZE 64
 #define MAX_NUM_TOKENS 64
 
+pid_t foregroundPGId = 0;
+pid_t backgroundPGId[64];
+
+int isExit = 0;
+
 struct _ret{
 	char** t;
 	int l;
 };
 
-void signal_callback_handler_child(int signum){
-	printf("\n");
-	exit(0);
+void signal_callback_handler_parent(int signum){
+	if(!foregroundPGId)
+		main();
+	killpg(foregroundPGId, signum);
 }
 
-void signal_callback_handler_parent(int signum){
-	printf("Hello>");
-	// exit(0);
+void signal_callback_handler_child_dead(int signum){
+	pid_t pid;
+
+	if(isExit){
+		while ((pid = waitpid(-1, NULL, WNOHANG)) != -1){
+			int i;
+			for(i=0;i<64;++i){
+				if(backgroundPGId[i] == pid){
+					backgroundPGId[i] = 0;
+				}
+			}
+		}
+	}
 }
 
 struct _ret tokenize(char *line){
@@ -58,6 +74,13 @@ struct _ret tokenize(char *line){
 
 void main(void){
 
+	signal(SIGINT, signal_callback_handler_parent);
+	signal(SIGCHLD, signal_callback_handler_child_dead);
+
+	int j;
+	for(j=0;j<64;++j)
+		backgroundPGId[j] = 0;
+
 	char  line[MAX_INPUT_SIZE];
 	struct _ret ret;
 	char  **tokens;
@@ -69,9 +92,11 @@ void main(void){
 	pid_t bpgid = -1;
 
 	while (1) {
+		foregroundPGId = 0;
+
 		char path[1000];
 		getcwd(path, 1000);
-		printf("Hello::%s>", path);
+		printf("%s>", path);
 		bzero(line, MAX_INPUT_SIZE);
 		gets(line);
 		line[strlen(line)] = '\n'; //terminate with new line
@@ -83,33 +108,10 @@ void main(void){
 			continue;
 
 		char temp[64];
-		sprintf(temp, "/bin/%s", tokens[0]);
+		sprintf(temp, "%s", tokens[0]);
 		
 		//check if that command is a std bash executable
-		if(access(temp, F_OK) != -1){
-			pid_t pid = fork();
-			if(pid == 0){
-				char* argv[64];
-				int i;
-				for( i=0; i < l; i++ ){
-					argv[i] = tokens[i];
-					// printf("%s\n", argv[i]);
-				}
-				argv[i] = (char*)NULL;
-				int retCode = execvp(temp, argv);
-				
-				if(retCode == -1){
-					fprintf(stderr, "Error while running %s! Error code: %d\n", tokens[0], errno);
-				}
-
-				exit(0);
-			}
-			// signal(SIGINT, signal_callback_handler_parent);
-			setpgid(pid, pid);
-			wait();
-			
-		}
-		else if(strcmp(tokens[0], "cd") == 0){
+		if(strcmp(tokens[0], "cd") == 0){
 
 			if(l != 2){
 				fprintf(stderr, "Usage cd: cd <path>\n");
@@ -160,7 +162,7 @@ void main(void){
 
 				pid_t pid = fork();
 				if(pid == 0){
-					
+					setpgid(0, 0);	
 					char arg[1000];
 					sprintf(arg, "%s %s %s display", tokens[1], server_ip, server_port);
 					
@@ -169,11 +171,9 @@ void main(void){
 					if(retCode == -1){
 						fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
 					}
-
 					exit(0);
 				}
-				setpgid(pid, pid);
-				// signal(SIGINT, signal_callback_handler_parent);
+				foregroundPGId = pid;
 				wait();
 			}
 
@@ -182,7 +182,7 @@ void main(void){
 				pid_t pid = fork();
 				
 				if(pid == 0){
-					
+					setpgid(0, 0);
 					char arg[1000];
 					sprintf(arg, "%s %s %s display", tokens[1], server_ip, server_port);
 					
@@ -200,12 +200,11 @@ void main(void){
 
 					exit(0);
 				}
-				setpgid(pid, pid);
+				foregroundPGId = pid;
 				wait();
 			}
 			else if(l >= 4 && strcmp(tokens[2], "|") == 0){
-								
-				
+
 				int pipefd[2];
 
 				if (pipe(pipefd) == -1) {
@@ -216,6 +215,7 @@ void main(void){
 
 				if((pid=fork()) == 0){
 					// left side child process
+					setpgid(0, 0);
 					close(1);
 					dup(pipefd[1]);
 					close(pipefd[0]);
@@ -232,15 +232,15 @@ void main(void){
 					exit(0);
 				}
 				pid1 = pid;
-				setpgid(pid, pid); //NOTE: setting the pgid of both children to the same group
-
+				
 				if((pid=fork()) == 0){
+					setpgid(0, pid1);
 					close(0);
 					dup(pipefd[0]);
 					close(pipefd[0]);
 					close(pipefd[1]);
 					char temp1[64];
-					sprintf(temp1, "/bin/%s", tokens[3]);
+					sprintf(temp1, "%s", tokens[3]);
 					if(access(temp, F_OK) != -1){
 						char* argv[64];
 						int i;
@@ -258,10 +258,12 @@ void main(void){
 						exit(0);
 					}
 				}	
-				setpgid(pid, pid1);
-
+				
 				close(pipefd[0]);
 				close(pipefd[1]);
+				
+				foregroundPGId = pid1;
+
 				wait();
 				wait();
 
@@ -271,7 +273,6 @@ void main(void){
 				fprintf(stderr, "Usage getfl: getfl <filename> | <command>\n");
 				fprintf(stderr, "Usage getfl: getfl <filename> > <output file>\n");
 				continue;
-				
 			}
 		}
 		else if(strcmp(tokens[0], "getsq") == 0){
@@ -284,7 +285,7 @@ void main(void){
 					pid_t pid = fork();
 					
 					if(pid == 0){
-									
+						setpgid(0, 0);			
 						char arg[1000];
 						sprintf(arg, "%s %s %s display", tokens[i], server_ip, server_port);
 						
@@ -295,7 +296,7 @@ void main(void){
 						}
 						exit(0);
 					}
-					setpgid(pid, pid);
+					foregroundPGId = pid;
 					wait();
 				}
 			}
@@ -308,11 +309,11 @@ void main(void){
 			else{
 				pid_t p_top;
 				if((p_top=fork())==0){
-					pid_t pgid = -1;
+					setpgid(0, 0);
 					for(i=1;i<l;++i){
 						pid_t pid = fork(); 
 						if(pid == 0){
-										
+							setpgid(0, p_top);	
 							char arg[1000];
 							sprintf(arg, "%s %s %s display", tokens[i], server_ip, server_port);
 							
@@ -323,13 +324,10 @@ void main(void){
 							}
 							exit(0);
 						}
-						if(pgid==-1)
-							pgid = pid;
-						setpgid(pid, pgid);
 					}
 					while(waitpid(-1, NULL, WNOHANG) > 0);
 				}
-				setpgid(p_top, p_top);
+				foregroundPGId = p_top;
 				wait();
 			}
 		}
@@ -342,6 +340,7 @@ void main(void){
 				pid_t pid = fork();
 				
 				if(pid == 0){	
+					setpgid(0, 0);
 					char arg[1000];
 					sprintf(arg, "%s %s %s display", tokens[i], server_ip, server_port);
 					
@@ -352,7 +351,13 @@ void main(void){
 					}
 					exit(0);
 				}
-				setpgid(pid, pid); //TODO: see if this is to be done
+
+				for(j=0;j<64;++j){
+					if(backgroundPGId[j] == 0){
+						backgroundPGId[j] = pid;
+						break;
+					}
+				}
 			}
 		}
 		else if(strcmp(tokens[0], "exit") == 0){
@@ -360,11 +365,39 @@ void main(void){
 				fprintf(stderr, "Usage exit: exit \n");
 				continue;	
 			}
-			//kill all background processes
+			
+			isExit = 1;
+
+			for(j=0;j<64;++j){
+				if(backgroundPGId[j] != 0){
+					kill(backgroundPGId[j], SIGINT);
+					wait();
+				}
+			}
+
 			exit(0);
 		}
 		else{
-			printf("FOund some!\n");
+			pid_t pid = fork();
+			if(pid == 0){
+				setpgid(0, 0);
+				char* argv[64];
+				int i;
+				for( i=0; i < l; i++ ){
+					argv[i] = tokens[i];
+				}
+				argv[i] = (char*)NULL;
+				int retCode = execvp(temp, argv);
+				
+				if(retCode == -1){
+					fprintf(stderr, "Error while running %s! Error code: %d\n", tokens[0], errno);
+				}
+
+				exit(0);
+			}
+
+			foregroundPGId = pid;
+			wait();
 		}
 
 		// Freeing the allocated memory	
