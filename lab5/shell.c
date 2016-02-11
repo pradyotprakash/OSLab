@@ -14,8 +14,6 @@
 pid_t foregroundPGId = 0;
 pid_t backgroundPGId[64];
 
-int isExit = 0;
-
 struct _ret{
 	char** t;
 	int l;
@@ -23,20 +21,19 @@ struct _ret{
 
 void signal_callback_handler_parent(int signum){
 	if(!foregroundPGId)
-		main();
+		return;
+
 	killpg(foregroundPGId, signum);
 }
 
 void signal_callback_handler_child_dead(int signum){
 	pid_t pid;
 
-	if(isExit){
-		while ((pid = waitpid(-1, NULL, WNOHANG)) != -1){
-			int i;
-			for(i=0;i<64;++i){
-				if(backgroundPGId[i] == pid){
-					backgroundPGId[i] = 0;
-				}
+	while ((pid = waitpid(-1, NULL, WNOHANG)) != -1){
+		int i;
+		for(i=0;i<64;++i){
+			if(backgroundPGId[i] == pid){
+				backgroundPGId[i] = 0;
 			}
 		}
 	}
@@ -66,7 +63,7 @@ struct _ret tokenize(char *line){
 	}
 
 	free(token);
-	r.t[tokenNo] = NULL ;
+	r.t[tokenNo] = NULL;
 	r.l = tokenNo;
 	return r;
 }
@@ -81,15 +78,13 @@ void main(void){
 	for(j=0;j<64;++j)
 		backgroundPGId[j] = 0;
 
-	char  line[MAX_INPUT_SIZE];
+	char line[MAX_INPUT_SIZE];
 	struct _ret ret;
 	char  **tokens;
 	int i, l;
 
 	char* server_ip = NULL;
 	char* server_port = NULL;
-
-	pid_t bpgid = -1;
 
 	while (1) {
 		foregroundPGId = 0;
@@ -106,11 +101,7 @@ void main(void){
 
 		if(l == 0)
 			continue;
-
-		char temp[64];
-		sprintf(temp, "%s", tokens[0]);
 		
-		//check if that command is a std bash executable
 		if(strcmp(tokens[0], "cd") == 0){
 
 			if(l != 2){
@@ -163,8 +154,6 @@ void main(void){
 				pid_t pid = fork();
 				if(pid == 0){
 					setpgid(0, 0);	
-					char arg[1000];
-					sprintf(arg, "%s %s %s display", tokens[1], server_ip, server_port);
 					
 					int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[1], server_ip, server_port, "display", NULL);
 					
@@ -183,12 +172,9 @@ void main(void){
 				
 				if(pid == 0){
 					setpgid(0, 0);
-					char arg[1000];
-					sprintf(arg, "%s %s %s display", tokens[1], server_ip, server_port);
-					
 					close(1);
-					int fd = open(tokens[3], O_RDWR | O_CREAT);
-					dup2(fd, 1);
+					int fd = open(tokens[3], O_CREAT | O_RDWR);
+					dup(fd);
 
 					int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[1], server_ip, server_port, "display", NULL);
 					
@@ -200,6 +186,7 @@ void main(void){
 
 					exit(0);
 				}
+
 				foregroundPGId = pid;
 				wait();
 			}
@@ -220,9 +207,12 @@ void main(void){
 					dup(pipefd[1]);
 					close(pipefd[0]);
 					close(pipefd[1]);
-					char arg[1000];
-					sprintf(arg, "%s %s %s display", tokens[1], server_ip, server_port);
 					
+					if(server_port == NULL || server_ip == NULL){
+						fprintf(stderr, "Run 'server' command first!\n");
+						continue;
+					}
+
 					int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[1], server_ip, server_port, "display", NULL);
 					
 					if(retCode == -1){
@@ -239,24 +229,20 @@ void main(void){
 					dup(pipefd[0]);
 					close(pipefd[0]);
 					close(pipefd[1]);
-					char temp1[64];
-					sprintf(temp1, "%s", tokens[3]);
-					if(access(temp, F_OK) != -1){
-						char* argv[64];
-						int i;
-						for( i=0; i < l; i++ ){
-							argv[i] = tokens[i+3];
-							// printf("%s\n", argv[i]);
-						}
-						argv[i] = (char*)NULL;
-						int retCode = execvp(temp, argv);
-						
-						if(retCode == -1){
-							fprintf(stderr, "Error while running %s! Error : %s\n", tokens[0], strerror(errno));
-						}
-
-						exit(0);
+					
+					char* argv[64];
+					int i;
+					for(i=0; i < l; i++){
+						argv[i] = tokens[i+3];
 					}
+					argv[i] = (char*)NULL;
+					int retCode = execvp(tokens[3], argv);
+					
+					if(retCode == -1){
+						fprintf(stderr, "Error while running %s! Error : %s\n", tokens[0], strerror(errno));
+					}
+
+					exit(0);
 				}	
 				
 				close(pipefd[0]);
@@ -281,13 +267,17 @@ void main(void){
 				continue;
 			}
 			else{
+
+				if(server_port == NULL || server_ip == NULL){
+					fprintf(stderr, "Run 'server' command first!\n");
+					continue;
+				}
+
 				for(i=1;i<l;++i){
 					pid_t pid = fork();
 					
 					if(pid == 0){
 						setpgid(0, 0);			
-						char arg[1000];
-						sprintf(arg, "%s %s %s display", tokens[i], server_ip, server_port);
 						
 						int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[i], server_ip, server_port, "nodisplay", NULL);
 						
@@ -307,44 +297,54 @@ void main(void){
 				continue;
 			}
 			else{
-				pid_t p_top;
-				if((p_top=fork())==0){
-					setpgid(0, 0);
-					for(i=1;i<l;++i){
-						pid_t pid = fork(); 
-						if(pid == 0){
-							setpgid(0, p_top);	
-							char arg[1000];
-							sprintf(arg, "%s %s %s display", tokens[i], server_ip, server_port);
-							
-							int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[i], server_ip, server_port, "nodisplay", NULL);
-							
-							if(retCode == -1){
-								fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
-							}
-							exit(0);
-						}
-					}
-					while(waitpid(-1, NULL, WNOHANG) > 0);
+
+				if(server_port == NULL || server_ip == NULL){
+					fprintf(stderr, "Run 'server' command first!\n");
+					continue;
 				}
-				foregroundPGId = p_top;
-				wait();
+
+				pid_t pgid = -1;
+				
+				for(i=1;i<l;++i){
+					pid_t pid = fork();
+					if(pgid == -1)
+						pgid = pid;
+
+					if(pid == 0){
+						setpgid(0, pgid);	
+						
+						int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[i], server_ip, server_port, "nodisplay", NULL);
+						
+						if(retCode == -1){
+							fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
+						}
+						exit(0);
+					}
+				}
+				foregroundPGId = pgid;
+			
+				for(i=1;i<l;++i)
+					wait();
 			}
 		}
 		else if(strcmp(tokens[0], "getbg") == 0){
 			if(l != 2){
-				fprintf(stderr, "Usage getbg: getbg <filename> \n");
+				fprintf(stderr, "Usage getbg: getbg <filename>\n");
 				continue;
 			}
 			else{
+
+				if(server_port == NULL || server_ip == NULL){
+					fprintf(stderr, "Run 'server' command first!\n");
+					continue;
+				}
+
 				pid_t pid = fork();
 				
 				if(pid == 0){	
 					setpgid(0, 0);
-					char arg[1000];
-					sprintf(arg, "%s %s %s display", tokens[i], server_ip, server_port);
-					
-					int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[i], server_ip, server_port, "nodisplay", NULL);
+										
+					int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[1], server_ip, server_port, "nodisplay", NULL);
 					
 					if(retCode == -1){
 						fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
@@ -366,12 +366,10 @@ void main(void){
 				continue;	
 			}
 			
-			isExit = 1;
-
 			for(j=0;j<64;++j){
 				if(backgroundPGId[j] != 0){
 					kill(backgroundPGId[j], SIGINT);
-					wait();
+					// wait();
 				}
 			}
 
@@ -383,11 +381,11 @@ void main(void){
 				setpgid(0, 0);
 				char* argv[64];
 				int i;
-				for( i=0; i < l; i++ ){
+				for(i=0; i < l; i++){
 					argv[i] = tokens[i];
 				}
 				argv[i] = (char*)NULL;
-				int retCode = execvp(temp, argv);
+				int retCode = execvp(tokens[0], argv);
 				
 				if(retCode == -1){
 					fprintf(stderr, "Error while running %s! Error code: %d\n", tokens[0], errno);
