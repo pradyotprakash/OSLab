@@ -13,23 +13,17 @@
 
 pid_t foregroundPGId = 0;
 pid_t backgroundPGId[64];
-int nBackground;
 
 struct _ret{
 	char** t;
 	int l;
 };
 
-char backgroundProc[64][MAX_INPUT_SIZE];
-
-
 void signal_callback_handler_parent(int signum){
-	if(!foregroundPGId){
+	if(!foregroundPGId)
 		return;
-	}
 
 	killpg(foregroundPGId, signum);
-	
 }
 
 void signal_callback_handler_child_dead(int signum){
@@ -38,13 +32,8 @@ void signal_callback_handler_child_dead(int signum){
 	while ((pid = waitpid(-1, NULL, WNOHANG)) != -1){
 		int i;
 		for(i=0;i<64;++i){
-			if(backgroundPGId[i] == pid && pid!=0){
-				printf("\nDone. Proc id: %d \t ", pid);
-				int j;
-				printf("%s\n", backgroundProc[i]);
+			if(backgroundPGId[i] == pid){
 				backgroundPGId[i] = 0;
-				nBackground--;
-				backgroundProc[i][0] = '\0';
 			}
 		}
 	}
@@ -85,13 +74,9 @@ void main(void){
 	signal(SIGINT, signal_callback_handler_parent);
 	signal(SIGCHLD, signal_callback_handler_child_dead);
 
-	nBackground = 0;
-
 	int j;
-	for(j=0;j<64;++j){
+	for(j=0;j<64;++j)
 		backgroundPGId[j] = 0;
-		backgroundProc[j][0] = '\0';
-	}
 
 	char line[MAX_INPUT_SIZE];
 	struct _ret ret;
@@ -358,8 +343,6 @@ void main(void){
 				
 				if(pid == 0){	
 					setpgid(0, 0);
-					//so that output of background process doesn't get printed to terminal
-					close(1);
 										
 					int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[1], server_ip, server_port, "nodisplay", NULL);
 					
@@ -372,9 +355,6 @@ void main(void){
 				for(j=0;j<64;++j){
 					if(backgroundPGId[j] == 0){
 						backgroundPGId[j] = pid;
-						nBackground++;
-						strcpy(backgroundProc[j], line);
-						printf("[%d] %d\n", nBackground, pid);
 						break;
 					}
 				}
@@ -408,7 +388,7 @@ void main(void){
 				int retCode = execvp(tokens[0], argv);
 				
 				if(retCode == -1){
-					fprintf(stderr, "Error while running %s! Error : %d\n", tokens[0], strerror(errno));
+					fprintf(stderr, "Error while running %s! Error code: %d\n", tokens[0], errno);
 				}
 
 				exit(0);
@@ -430,3 +410,5 @@ void main(void){
 	free(server_port);
 	free(server_ip);
 }
+
+
