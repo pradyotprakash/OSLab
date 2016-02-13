@@ -167,7 +167,10 @@ void main(void){
 			if(l == 2){
 
 				pid_t pid = fork();
-				if(pid == 0){
+				if(pid < 0){
+					fprintf(stderr, "Could not fork()\n");
+				}
+				else if(pid == 0){
 					setpgid(0, 0);	
 					
 					int retCode = execlp("./get-one-file-sig", "./get-one-file-sig", tokens[1], server_ip, server_port, "display", NULL);
@@ -175,16 +178,20 @@ void main(void){
 					if(retCode == -1){
 						fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
 					}
-					exit(0);
+					exit(retCode);
 				}
-				foregroundPGId = pid;
-				wait();
+				else{
+					foregroundPGId = pid;
+					wait();
+				}
 			}
 
 			else if(l == 4 && strcmp(tokens[2], ">") == 0){
 				
 				pid_t pid = fork();
-				
+				if(pid < 0){
+					fprintf(stderr, "Could not fork()\n");
+				}
 				if(pid == 0){
 					setpgid(0, 0);
 					close(1);
@@ -199,11 +206,12 @@ void main(void){
 
 					close(fd);
 
-					exit(0);
+					exit(retCode);
 				}
-
-				foregroundPGId = pid;
-				wait();
+				else{
+					foregroundPGId = pid;
+					wait();
+				}
 			}
 			else if(l >= 4 && strcmp(tokens[2], "|") == 0){
 
@@ -234,7 +242,7 @@ void main(void){
 						fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
 					}
 
-					exit(0);
+					exit(retCode);
 				}
 				pid1 = pid;
 				
@@ -257,7 +265,7 @@ void main(void){
 						fprintf(stderr, "Error while running %s! Error : %s\n", tokens[0], strerror(errno));
 					}
 
-					exit(0);
+					exit(retCode);
 				}	
 				
 				close(pipefd[0]);
@@ -299,7 +307,7 @@ void main(void){
 						if(retCode == -1){
 							fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
 						}
-						exit(0);
+						exit(retCode);
 					}
 					foregroundPGId = pid;
 					wait();
@@ -333,7 +341,7 @@ void main(void){
 						if(retCode == -1){
 							fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
 						}
-						exit(0);
+						exit(retCode);
 					}
 				}
 				foregroundPGId = pgid;
@@ -366,7 +374,7 @@ void main(void){
 					if(retCode == -1){
 						fprintf(stderr, "Error while running getfl! Error : %s\n", strerror(errno));
 					}
-					exit(0);
+					exit(retCode);
 				}
 
 				for(j=0;j<64;++j){
@@ -396,8 +404,14 @@ void main(void){
 			exit(0);
 		}
 		else{
+			// printf("ggfdgdf\n");
 			pid_t pid = fork();
-			if(pid == 0){
+			// printf("pp\n");
+			if(pid < 0){
+				fprintf(stderr, "Could not fork()\n");
+			}
+			else if(pid == 0){
+				
 				setpgid(0, 0);
 				char* argv[64];
 				int i;
@@ -408,14 +422,18 @@ void main(void){
 				int retCode = execvp(tokens[0], argv);
 				
 				if(retCode == -1){
-					fprintf(stderr, "Error while running %s! Error : %d\n", tokens[0], strerror(errno));
+					fprintf(stderr, "Error while running %s! Error: %s\n", tokens[0], strerror(errno));
 				}
 
-				exit(0);
-			}
+				for(i=0;argv[i] != NULL;i++)
+					free(argv[i]);
 
-			foregroundPGId = pid;
-			wait();
+				exit(retCode);
+			}
+			else{
+				foregroundPGId = pid;
+				wait();
+			}
 		}
 
 		// Freeing the allocated memory	
