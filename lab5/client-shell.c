@@ -389,7 +389,7 @@ void main(void){
 			}
 		}
 		else if(strcmp(tokens[0], "exit") == 0){
-			if(l!=1){
+			if(l != 1){
 				fprintf(stderr, "Usage exit: exit \n");
 				continue;	
 			}
