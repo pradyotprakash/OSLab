@@ -106,7 +106,7 @@ void main(void){
 
 		char path[1000];
 		getcwd(path, 1000);
-		printf("%s>", path);
+		printf("%s:hello>", path);
 		bzero(line, MAX_INPUT_SIZE);
 		gets(line);
 		line[strlen(line)] = '\n'; //terminate with new line
