@@ -1,0 +1,12 @@
+We have implemented the required functions as mentioned in the report.
+
+For example, to see the folder listings in the current directory, type `ls`
+To change the directory, type `cd`.
+
+If the server details are not stoed before requesting the file, an error message is displayed.
+
+Suppose the server is running on port 5000 on localhost, then follow the following sequence of commands:
+
+server 127.0.0.1 5000
+getfl <some_file_name> # this will take a large amount of time if the file is big. So to abort it, press Ctrl^C
+getpl file1 file2 file3
