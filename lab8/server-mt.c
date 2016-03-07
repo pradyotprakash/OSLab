@@ -34,9 +34,9 @@ void add(struct queue *Q, int fd){
 
 	struct node * n = (struct node*) malloc(sizeof(struct node));
 	n->val = fd;
-	while(Q->curr_len == Q->max_len && Q->max_len!=0){
-		pthread_cond_wait(&has_space, &mutex);
-	}
+	// while(Q->curr_len == Q->max_len && Q->max_len!=0){
+	// 	pthread_cond_wait(&has_space, &mutex);
+	// }
 
 	if(Q->head == NULL){
 		Q->head = Q->tail = n;
@@ -53,10 +53,13 @@ void add(struct queue *Q, int fd){
 int pop_head(struct queue *Q){
 
 	int ret;
-	ret = Q->head->val;
-	while(Q->curr_len == 0){
-		pthread_cond_wait(&has_data, &mutex);
+	if(Q->head == NULL){
+		return -1;
 	}
+	ret = Q->head->val;
+	// while(Q->curr_len == 0){
+	// 	pthread_cond_wait(&has_data, &mutex);
+	// }
 
 	if(Q->head == Q->tail){
 		free(Q->head);
@@ -71,30 +74,54 @@ int pop_head(struct queue *Q){
 	return ret;
 }
 
+void print(struct queue* Q) {
+	if(Q->head==NULL){
+		printf("Empty queue\n");
+		return;
+	}
+	struct node* ptr = Q->head;
+	while(ptr != NULL){
+		printf("%d ->", ptr->val);
+		ptr = ptr->next;
+	}
+	printf("\n");
+}
+
+void sigpipe_handler(int signum);
+
 void* worker_thread(void* arg){
 	
 	while(1){
-
 		pthread_mutex_lock(&mutex);
+		while(waiting.curr_len == 0){
+			printf("Queue empty\n");
+			pthread_cond_wait(&has_data, &mutex);
+		}
 		int newsockfd = pop_head(&waiting);
+		// printf("%d\n", newsockfd);
 		pthread_cond_signal(&has_space);
 		pthread_mutex_unlock(&mutex);
 
 		char buffer[256];
 		bzero(buffer, 256);
 		int n = read(newsockfd,buffer, 255);
-		if (n < 0)
-			error("ERROR reading from socket");
+		if (n < 0){
+			printf("ERROR reading from socket");
+			continue;
+		}
 
 		if((buffer[0] == 'g' || buffer[0] == 'G') && (buffer[1] == 'e' || buffer[1] == 'E') && (buffer[2] == 't' || buffer[2] == 'T')
 					&& (buffer[3] == ' ') ){
 			// get file from the server and send to client
 			
+			// printf("%s\n", buffer);
+			
 			char filepath[100]; //string copy
 			int i;
 		
-			for(i=4;buffer[i]!='\n';i++){
+			for(i=4;buffer[i]!='\0';i++){
 				filepath[i-4] = buffer[i];
+				// printf("%c\n", buffer[i]);
 			}
 			filepath[i-4] = '\0';
 
@@ -103,7 +130,8 @@ void* worker_thread(void* arg){
 			FILE* fp;
 			fp = fopen(filepath, "rb");
 			if(fp == NULL){
-				error("Error in opening file\n");
+				printf("Error in opening file\n");
+				continue;
 			}
 
 			int bytesSent;
@@ -113,8 +141,10 @@ void* worker_thread(void* arg){
 			while((read = fread(sendbuffer, sizeof(sendbuffer), 1, fp)) > 0){
 				bytesSent = write(newsockfd, sendbuffer, PACKETSIZE);
 
-				if(bytesSent < 0)
-					error("Error while writing to socket");
+				if(bytesSent < 0){
+					printf("Error while writing to socket\n");
+					break;	
+				}
 			}
 			fclose(fp);
 		}
@@ -124,7 +154,10 @@ void* worker_thread(void* arg){
 			
 			/* send reply to client */
 			n = write(newsockfd,"Invalid Command", 15);
-			if (n < 0) error("ERROR writing to socket");
+			if (n < 0) {
+				printf("ERROR writing to socket\n");
+				continue;
+			}
 		}
 		close(newsockfd);
 	}
@@ -132,9 +165,15 @@ void* worker_thread(void* arg){
 	return 0;
 }
 
+void sigpipe_handler(int signum){
+	worker_thread(NULL);
+}
+
 int main(int argc, char *argv[]){
+	signal(SIGPIPE, sigpipe_handler);
 
 	int sockfd, newsockfd, portno, clilen;
+	waiting.head = waiting.tail = NULL;
 	
 	struct sockaddr_in serv_addr, cli_addr;
 	int n;
@@ -179,19 +218,16 @@ int main(int argc, char *argv[]){
 	/* accept a new request, create a newsockfd */
 	while(1){
 
-		pthread_mutex_lock(&mutex);		
-		if(waiting.max_len == waiting.curr_len){
-			// take care of this later
-			// some cond var needed
-			// mostly reject
-		}
-		pthread_mutex_unlock(&mutex);
-
 		newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
 		if (newsockfd < 0) 
 			 error("ERROR on accept");
 
 		pthread_mutex_lock(&mutex);
+		while(waiting.max_len == waiting.curr_len && waiting.max_len != 0){
+			printf("Queue full\n");
+			print(&waiting);
+			pthread_cond_wait(&has_space, &mutex);
+		}
 		add(&waiting, newsockfd);
 		pthread_cond_signal(&has_data);
 		pthread_mutex_unlock(&mutex);
