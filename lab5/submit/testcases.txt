@@ -1,12 +1,21 @@
 We have implemented the required functions as mentioned in the report.
 
+The shell starts with a prompt that looks like "<path>:hello>", where path is the path to the current working directory in which the excutable for the shell has been run.
+
 For example, to see the folder listings in the current directory, type `ls`
 To change the directory, type `cd`.
 
-If the server details are not stoed before requesting the file, an error message is displayed.
+If the server details are not stored before requesting the file, an error message is displayed.
 
 Suppose the server is running on port 5000 on localhost, then follow the following sequence of commands:
 
 server 127.0.0.1 5000
 getfl <some_file_name> # this will take a large amount of time if the file is big. So to abort it, press Ctrl^C
 getpl file1 file2 file3
+
+
+getbg <some_file_name> #this prints background process info in the format given below, for background processes, output file stream is closed, so that they don't arbitrarily print onto the terminal
+
+[<n>] <pid> , where n is the number of background processes currently running and pid is the pid of the process just created
+On finishing, the following is printed,
+Done: <pid> 	<command>

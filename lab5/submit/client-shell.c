@@ -40,7 +40,6 @@ void signal_callback_handler_child_dead(int signum){
 		for(i=0;i<64;++i){
 			if(backgroundPGId[i] == pid && pid!=0){
 				printf("\nDone. Proc id: %d \t ", pid);
-				int j;
 				printf("%s\n", backgroundProc[i]);
 				backgroundPGId[i] = 0;
 				nBackground--;
@@ -106,7 +105,7 @@ void main(void){
 
 		char path[1000];
 		getcwd(path, 1000);
-		printf("%s>", path);
+		printf("%s:hello>", path);
 		bzero(line, MAX_INPUT_SIZE);
 		gets(line);
 		line[strlen(line)] = '\n'; //terminate with new line

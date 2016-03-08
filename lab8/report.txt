@@ -1,0 +1,84 @@
+N = 10
+throughput = 3.651123 req/s
+average response time = 3.939134 sec
+
+N = 9
+throughput = 3.737036 req/s
+average response time = 3.918942 sec
+
+N = 8
+throughput = 4.938990 req/s
+average response time = 2.794028 sec
+
+N = 7
+throughput = 4.119698 req/s
+average response time = 3.415307 sec
+
+N = 6
+throughput = 3.971511 req/s
+average response time = 3.695479 sec
+
+N = 5
+throughput = 3.770285 req/s
+average response time = 3.856217 sec
+
+N = 4
+throughput = 4.519298 req/s
+average response time = 3.146894 sec
+
+N = 3
+throughput = 4.548031 req/s
+average response time = 3.094214 sec
+
+N = 1
+throughput = 4.156791 req/s
+average response time = 3.479224 sec
+
+N = 2
+throughput = 2.256205 req/s
+average response time = 6.670437 sec
+
+
+
+EXPT 2
+N = 1
+throughput = 18.436385 (req/s)
+average response time = 17.119497 sec
+
+
+N = 2
+throughput = 24.877450 (req/s)
+average response time = 13.434868 sec
+
+
+
+N = 3
+
+
+
+N = 4 
+throughput = 22.294399 (req/s)
+average response time = 17.005001 sec
+
+
+
+N = 5
+
+
+N = 6
+throughput = 21.775973 (req/s)
+average response time = 10.252720 sec
+
+N = 7
+
+N = 8
+throughput = 20.203135 (req/s)
+average response time = 11.383060 sec
+
+
+N = 9
+
+N = 10
+throughput = 23.173789 (req/s)
+average response time = 42.403660 sec
+

@@ -94,7 +94,7 @@ void *_main(void* arg){
 		if(elapsed > duration)
 			break;
 
-		usleep(think_time);	// wait for the specified amount of time
+		sleep(think_time);	// wait for the specified amount of time
 	}
 }
 

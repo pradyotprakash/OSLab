@@ -40,7 +40,6 @@ void signal_callback_handler_child_dead(int signum){
 		for(i=0;i<64;++i){
 			if(backgroundPGId[i] == pid && pid!=0){
 				printf("\nDone. Proc id: %d \t ", pid);
-				int j;
 				printf("%s\n", backgroundProc[i]);
 				backgroundPGId[i] = 0;
 				nBackground--;
