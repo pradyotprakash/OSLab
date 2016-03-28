@@ -21,8 +21,8 @@ sudo echo 3 > /proc/sys/vm/drop_caches;
 notify-send "Done false write";
 echo "Exp4 Done"
 
-sudo echo 3 > /proc/sys/vm/drop_caches;
-echo "Last experiment running"
-./a.out false write 3 >> output;
-echo "Done"
+# sudo echo 3 > /proc/sys/vm/drop_caches;
+# echo "Last experiment running"
+# ./a.out false write 3 >> output;
+# echo "Done"
 rm a.out

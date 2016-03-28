@@ -9,3 +9,16 @@
 
 	VMSize = 14436 kB
 	VMrss = 356 kB
+
+2.
+	Average: 62.907040 MB/s
+
+	Average: 62.757699 MB/s
+
+	Average: 56.987837 MB/s
+
+	Average: 39.075315 MB/s	
+
+3.
+	Average: 39.211688 MB/s
+	Average: 82.288611 MB/s

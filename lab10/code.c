@@ -9,9 +9,9 @@
 #define SIZE 512
 #define FILESIZE 10485760
 #define NUMFILES 25
-#define READSIZE 1024*10
-#define WRITESIZE 1024*10
-#define U 3
+#define READSIZE FILESIZE
+#define WRITESIZE FILESIZE
+#define U 2
 
 void expt1(){
 	struct stat statbuf;
@@ -40,6 +40,8 @@ void expt1(){
 	src[100000] = 'A';
 
 	scanf("%d", &i);
+	msync(src[0], FILESIZE, MS_SYNC);
+	munmap(src[0], FILESIZE);
 	close(fd);
 }
 
@@ -50,8 +52,11 @@ void expt2(int argc, char* argv[]){
 	char *src[NUMFILES];
 	int fds[NUMFILES], i;
 	unsigned long long int n=0;
+	
+	gettimeofday(&start, NULL);
 		
 	for(i=0;i<NUMFILES;i++){
+		bzero(buf, SIZE);
 		sprintf(buf, "file%d", i);
 		if((fds[i] = open(buf, O_RDWR)) == -1)
 			perror("File open error");
@@ -67,10 +72,9 @@ void expt2(int argc, char* argv[]){
 		}
 	}
 
-	gettimeofday(&start, NULL);
 
 	for(i=0;i<NUMFILES;++i){
-		int j;
+		unsigned int j;
 		if(argv[1][0] == 't'){ // if mmapped
 			if(argv[2][0] == 'r'){ //if read operation
 				char c;
@@ -80,9 +84,10 @@ void expt2(int argc, char* argv[]){
 			}
 			else{ // if write operation
 				for(j=0;j<WRITESIZE;++j)
-					src[i][j] = (char)j;
+					src[i][j] = 'a';
 				n += WRITESIZE;
 			}
+			msync(src[i], FILESIZE, MS_SYNC);
 			munmap(src[i], FILESIZE);
 		}
 		else{
@@ -92,6 +97,7 @@ void expt2(int argc, char* argv[]){
 				}
 			}
 			else{
+				// memset(buf, c, SIZE);
 				for (j=0;j<WRITESIZE;j+=SIZE){
 					n += write(fds[i], buf, SIZE);
 				}
@@ -127,9 +133,9 @@ void expt3(){
 	char c;
 	int j;
 	for(i=0;i<U;++i){
-		for(j=0;j<READSIZE;++j)
-			c = src[i][j];
-		n += READSIZE;
+		for(j=0;j<READSIZE;j+=SIZE){					
+			n += read(fds[i], buf, SIZE);
+		}
 	}
 
 	n = 0;
@@ -140,13 +146,29 @@ void expt3(){
 			src[i][j] = (char)j;
 		n += WRITESIZE;
 
+		msync(src[i], FILESIZE, MS_SYNC);
 		munmap(src[i], FILESIZE);
-		close(fds[i]);
+		// close(fds[i]);
 	}
-	
+
 	gettimeofday(&end, NULL);
+
 	double totTime = end.tv_sec - start.tv_sec + (end.tv_usec - start.tv_usec)/1000000.0;
 	printf("Average: %f MB/s\n", (n/totTime)/(1024*1024));
+
+	n = 0;
+	gettimeofday(&start, NULL);
+	for(i=0;i<U;++i){
+		for(j=0;j<WRITESIZE;j+=SIZE)
+			n += write(fds[i], buf, SIZE);
+		
+		close(fds[i]);
+	}
+
+	gettimeofday(&end, NULL);
+
+	totTime = end.tv_sec - start.tv_sec + (end.tv_usec - start.tv_usec)/1000000.0;
+	printf("Average: %f MB/s\n", (n/totTime)/(1024*1024));	
 }
 
 int main(int argc, char* argv[]){

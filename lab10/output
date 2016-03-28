@@ -1,11 +1,9 @@
 
-Pid: 12124
-Average: 0.932169 MB/s
-Pid: 12132
-Average: 0.977763 MB/s
-Pid: 12140
-Average: 0.932087 MB/s
-Pid: 12148
-Average: 105.233028 MB/s
-Pid: 12156
-Average: 75.313303 MB/s
+Pid: 7617
+Average: 52.582351 MB/s
+Pid: 7625
+Average: 62.410332 MB/s
+Pid: 7633
+Average: 28.727757 MB/s
+Pid: 7642
+Average: 35.713475 MB/s
