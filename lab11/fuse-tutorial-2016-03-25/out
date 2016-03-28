@@ -1,0 +1,32 @@
+./src/log.h:25:int  log_syscall(char *func, int retstat, int min_ret);
+Binary file ./src/bbfs matches
+Binary file ./src/bbfs.o matches
+./src/log.c:196:int log_syscall(char *func, int retstat, int min_ret)
+Binary file ./src/log.o matches
+./src/bbfs.c:81:    retstat = log_syscall("lstat", lstat(fpath, statbuf), 0);
+./src/bbfs.c:109:    retstat = log_syscall("fpath", readlink(fpath, link, size - 1), 0);
+./src/bbfs.c:139:	retstat = log_syscall("open", open(fpath, O_CREAT | O_EXCL | O_WRONLY, mode), 0);
+./src/bbfs.c:141:	    retstat = log_syscall("close", close(retstat), 0);
+./src/bbfs.c:144:	    retstat = log_syscall("mkfifo", mkfifo(fpath, mode), 0);
+./src/bbfs.c:146:	    retstat = log_syscall("mknod", mknod(fpath, mode, dev), 0);
+./src/bbfs.c:160:    return log_syscall("mkdir", mkdir(fpath, mode), 0);
+./src/bbfs.c:172:    return log_syscall("unlink", unlink(fpath), 0);
+./src/bbfs.c:184:    return log_syscall("rmdir", rmdir(fpath), 0);
+./src/bbfs.c:200:    return log_syscall("symlink", symlink(path, flink), 0);
+./src/bbfs.c:215:    return log_syscall("rename", rename(fpath, fnewpath), 0);
+./src/bbfs.c:228:    return log_syscall("link", link(fpath, fnewpath), 0);
+./src/bbfs.c:240:    return log_syscall("chmod", chmod(fpath, mode), 0);
+./src/bbfs.c:253:    return log_syscall("chown", chown(fpath, uid, gid), 0);
+./src/bbfs.c:265:    return log_syscall("truncate", truncate(fpath, newsize), 0);
+./src/bbfs.c:278:    return log_syscall("utime", utime(fpath, ubuf), 0);
+./src/bbfs.c:304:    fd = log_syscall("open", open(fpath, fi->flags), 0);
+./src/bbfs.c:340:    return log_syscall("pread", pread(fi->fh, buf, size, offset), 0);
+./src/bbfs.c:364:    return log_syscall("pwrite", pwrite(fi->fh, buf, size, offset), 0);
+./src/bbfs.c:384:    retstat = log_syscall("statvfs", statvfs(fpath, statv), 0);
+./src/bbfs.c:446:    return log_syscall("close", close(fi->fh), 0);
+./src/bbfs.c:465:	return log_syscall("fdatasync", fdatasync(fi->fh), 0);
+./src/bbfs.c:468:	return log_syscall("fsync", fsync(fi->fh), 0);
+./src/bbfs.c:481:    return log_syscall("lsetxattr", lsetxattr(fpath, name, value, size, flags), 0);
+./src/bbfs.c:494:    retstat = log_syscall("lgetxattr", lgetxattr(fpath, name, value, size), 0);
+./src/bbfs.c:513:    retstat = log_syscall("llistxattr", llistxattr(fpath, list, size), 0);
+./src/bbfs.c:532:    return log_syscall("lremovexattr", lremovexattr(fpath, name), 0);
