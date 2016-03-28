@@ -1,0 +1,76 @@
+PART A
+------
+The values were found using the command "pmap -x <pid>", which probably accesses the smaps file in /proc/<pid>
+
+Before memory mapping
+	VMSize = 4196 kB
+	VMrss = 496 kB
+
+After memory mapping, VMSize increases by size of file(=10240 kB) 
+because file has now been mmapped to the virtual memory of the
+process. RSS increases for memory parts other than the mapped file.
+	VMSize = 14436 kB 
+	VMrss = 508 kB
+
+After reading first byte, RSS increases by 4kB = size of one page.
+This is because the page in which the first byte resides is fetched 
+into physical memory.  
+	VMSize = 14436 kB
+	VMrss = 512 kB
+
+
+After reading 10000th byte, RSS increases by 4kB = size of one page.
+This is because the page in which the 10000th byte resides is fetched 
+into physical memory.
+	VMSize = 14436 kB
+	VMrss = 516 kB
+
+PART B
+------
+
+Read throughput
+---------------
+(Questions 1,2,3)
+
+With memory mapping : 62.907040 MB/s
+
+Without memory mapping : 62.757699 MB/s
+
+ 
+Read via memory mapping is essentially the same as that without,
+because when something is read, in either case it has to be 
+fetched into memory. Memory mapping doesn't give any performance 
+advantage in this case
+
+
+(Question 4)
+Disk buffer cache size increased by around 250 MB in each case.
+Hence, we can infer that for memory mapped files too, pages are
+fetched into the disk buffer cache region.
+
+
+Write throughput
+----------------
+(Questions 5,6,7)
+
+With memory mapping : 56.987837 MB/s
+
+Without memory mapping : 39.075315 MB/s	
+
+Memory mapped write is faster because the write to disk in case
+of a memory mapped file, is done at the very end, when the page 
+is unmapped. While in case of normal disk write, the some writes have
+to be done to disk, even if writes are done to the disk buffer
+cache intermediately. Hence, memory mapping gives performance 
+benefits over regular files, when application workload consists 
+mostly of disk writes.
+
+
+(Question 8)
+When the files reside in disk buffer cache,
+
+With memory mapping : 221.654587 MB/s
+
+Without memory mapping : 180.235412 MB/s
+
+Memory mapped write still has a better performance than non-memory mapped writes.
