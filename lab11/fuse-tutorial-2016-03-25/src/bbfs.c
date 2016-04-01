@@ -38,7 +38,6 @@
 #include <sys/types.h>
 
 #include <openssl/aes.h>
-#include <openssl/rand.h>
 
 #ifdef HAVE_SYS_XATTR_H
 #include <sys/xattr.h>
@@ -340,7 +339,33 @@ int bb_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
     // no need to get fpath on this one, since I work from fi->fh not the path
     log_fi(fi);
 
-    return log_syscall("pread", pread(fi->fh, buf, size, offset), 0);
+    int ret = log_syscall("pread", pread(fi->fh, buf, size, offset), 0);
+
+    // code starts here
+
+    unsigned char dec_out[strlen(buf)];
+    // int keylength = 128;
+    // unsigned char aes_key[16] = {'p', 'a', 's', 's', 'w', 'o', 'r', 'd', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'};
+    // unsigned char iv_enc[16] = {'p', 'a', 's', 's', 'w', 'o', 'r', 'd', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'};
+
+    // size_t inputslength = strlen(buf);
+    // const size_t encslength = ((inputslength + AES_BLOCK_SIZE) / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;
+    // memset(enc_out, 0, sizeof(enc_out));
+
+    // AES_KEY enc_key, dec_key;
+    // AES_set_decrypt_key(aes_key, keylength, &enc_key);
+    // AES_cbc_encrypt(buf, enc_out, inputslength, &enc_key, iv_enc, AES_DECRYPT);
+
+    // code ends here
+    bzero(dec_out, strlen(dec_out));
+    strcpy(dec_out, buf);
+    int i=0;
+    for(i=0;i<strlen(buf);++i){
+        buf[i] = (char)(dec_out[i]-1);
+    }
+    
+
+    return ret;
 }
 
 /** Write data to an open file
@@ -366,24 +391,28 @@ int bb_write(const char *path, const char *buf, size_t size, off_t offset,
 
     // openssl code here
 
-    int keylength = 128;
-    unsigned char aes_key[16] = {'p', 'a', 's', 's', 'w', 'o', 'r', 'd', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'};
-    unsigned char iv_enc[16] = {'p', 'a', 's', 's', 'w', 'o', 'r', 'd', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'};
+    unsigned char enc_out[strlen(buf)];
+    // int keylength = 128;
+    // unsigned char aes_key[16] = {'p', 'a', 's', 's', 'w', 'o', 'r', 'd', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'};
+    // unsigned char iv_enc[16] = {'p', 'a', 's', 's', 'w', 'o', 'r', 'd', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'};
 
-    size_t inputslength = strlen(buf);
-    const size_t encslength = ((inputslength + AES_BLOCK_SIZE) / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;
-    unsigned char enc_out[encslength];
-    memset(enc_out, 0, sizeof(enc_out));
+    // size_t inputslength = strlen(buf);
+    // const size_t encslength = ((inputslength + AES_BLOCK_SIZE) / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;
+    
+    // memset(enc_out, 0, sizeof(enc_out));
 
-    AES_KEY enc_key, dec_key;
-    AES_set_encrypt_key(aes_key, keylength, &enc_key);
-    AES_cbc_encrypt(buf, enc_out, inputslength, &enc_key, iv_enc, AES_ENCRYPT);
+    // AES_KEY enc_key, dec_key;
+    // AES_set_encrypt_key(aes_key, keylength, &enc_key);
+    // AES_cbc_encrypt((unsigned char*)buf, enc_out, inputslength, &enc_key, iv_enc, AES_ENCRYPT);
     
     // code ends here
 
-    log_msg("Buf here: %s %d\n", enc_out, strlen(enc_out));
-
-    return log_syscall("pwrite", pwrite(fi->fh, buf, size, offset), 0);
+    // log_msg("Buf here: %s %d\n", enc_out, strlen(enc_out));
+    int i;
+    for(i=0;i<strlen(buf);++i){
+        enc_out[i] = (char)(buf[i]+1);
+    }
+    return log_syscall("pwrite", pwrite(fi->fh, enc_out, size, offset), 0);
 }
 
 /** Get file system statistics
