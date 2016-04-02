@@ -344,6 +344,7 @@ int bb_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
     // code starts here
 
     unsigned char dec_out[strlen(buf)];
+    char c_enc = 'A';
     // int keylength = 128;
     // unsigned char aes_key[16] = {'p', 'a', 's', 's', 'w', 'o', 'r', 'd', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'};
     // unsigned char iv_enc[16] = {'p', 'a', 's', 's', 'w', 'o', 'r', 'd', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'};
@@ -360,8 +361,9 @@ int bb_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
     bzero(dec_out, strlen(dec_out));
     strcpy(dec_out, buf);
     int i=0;
-    for(i=0;i<strlen(buf);++i){
-        buf[i] = (char)(dec_out[i]-1);
+    buf[0] = dec_out[0] ^ c_enc; 
+    for(i=1;i<strlen(buf);++i){
+        buf[i] = (char)(dec_out[i-1] ^ dec_out[i]);
     }
     
 
@@ -391,6 +393,8 @@ int bb_write(const char *path, const char *buf, size_t size, off_t offset,
 
     // openssl code here
 
+
+    char c_enc = 'A';
     unsigned char enc_out[strlen(buf)];
     // int keylength = 128;
     // unsigned char aes_key[16] = {'p', 'a', 's', 's', 'w', 'o', 'r', 'd', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'};
@@ -409,8 +413,9 @@ int bb_write(const char *path, const char *buf, size_t size, off_t offset,
 
     // log_msg("Buf here: %s %d\n", enc_out, strlen(enc_out));
     int i;
-    for(i=0;i<strlen(buf);++i){
-        enc_out[i] = (char)(buf[i]+1);
+    enc_out[0] = buf[0] ^ c_enc;
+    for(i=1;i<strlen(buf);++i){
+        enc_out[i] = (char)(buf[i] ^ enc_out[i-1]);
     }
     return log_syscall("pwrite", pwrite(fi->fh, enc_out, size, offset), 0);
 }
